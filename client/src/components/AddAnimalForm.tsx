@@ -11,6 +11,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
@@ -22,6 +29,9 @@ const formSchema = z.object({
   health_status: z.string().min(1, "Health status is required"),
 });
 
+const dietOptions = ["Carnivore", "Herbivore", "Omnivore", "Piscivore"];
+const habitatOptions = ["Savanna", "Jungle", "Desert", "Arctic", "Grassland", "Rainforest"];
+const healthOptions = ["Healthy", "Good", "Excellent", "Fair", "Poor"];
 
 export default function AddAnimalForm({
   onComplete,
@@ -44,26 +54,32 @@ export default function AddAnimalForm({
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      // Store the new animal in localStorage
+      // Get existing animals from localStorage
       const localAnimals = JSON.parse(localStorage.getItem('localAnimals') || '[]');
+
+      // Create new animal with unique ID
       const newAnimal = {
         ...values,
-        id: Date.now(), // Use timestamp as a unique ID for local animals
+        id: Date.now().toString(), // Use timestamp as unique ID
         isLocal: true,
       };
 
-      localAnimals.push(newAnimal);
-      localStorage.setItem('localAnimals', JSON.stringify(localAnimals));
+      // Add to localStorage
+      localStorage.setItem('localAnimals', JSON.stringify([...localAnimals, newAnimal]));
 
       toast({
         title: "Success",
         description: "Animal added successfully",
       });
+
+      // Reset form and close dialog
+      form.reset();
       onComplete();
     } catch (error) {
+      console.error('Error adding animal:', error);
       toast({
         title: "Error",
-        description: "Failed to add animal",
+        description: "Failed to add animal. Please try again.",
         variant: "destructive",
       });
     }
@@ -85,6 +101,7 @@ export default function AddAnimalForm({
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="species"
@@ -98,6 +115,7 @@ export default function AddAnimalForm({
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="age"
@@ -105,51 +123,94 @@ export default function AddAnimalForm({
             <FormItem>
               <FormLabel>Age</FormLabel>
               <FormControl>
-                <Input type="number" min="0" {...field} />
+                <Input 
+                  type="number" 
+                  min="0" 
+                  placeholder="Enter age" 
+                  {...field}
+                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="diet"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Diet</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter diet details" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select diet type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {dietOptions.map((diet) => (
+                    <SelectItem key={diet} value={diet}>
+                      {diet}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="habitat"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Habitat</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter habitat" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select habitat" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {habitatOptions.map((habitat) => (
+                    <SelectItem key={habitat} value={habitat}>
+                      {habitat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="health_status"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Health Status</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter health status" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select health status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {healthOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <Button type="submit" className="w-full">
           Add Animal
         </Button>
