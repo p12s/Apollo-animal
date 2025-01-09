@@ -1,8 +1,19 @@
 import { ApolloServer } from "@apollo/server";
 import { gql } from "graphql-tag";
-import { db } from "@db";
-import { animals, type Animal, type NewAnimal } from "@db/schema";
-import { eq } from "drizzle-orm";
+
+// In-memory storage for animals
+let animals = [
+  { id: 1, name: "Leo", species: "Lion", age: 5, diet: "Carnivore", habitat: "Savanna", health_status: "Healthy" },
+  { id: 2, name: "Dumbo", species: "Elephant", age: 10, diet: "Herbivore", habitat: "Grassland", health_status: "Good" },
+  { id: 3, name: "Raja", species: "Tiger", age: 7, diet: "Carnivore", habitat: "Jungle", health_status: "Excellent" },
+  { id: 4, name: "Charlie", species: "Chimpanzee", age: 4, diet: "Omnivore", habitat: "Rainforest", health_status: "Good" },
+  { id: 5, name: "Penny", species: "Penguin", age: 3, diet: "Piscivore", habitat: "Arctic", health_status: "Healthy" },
+  { id: 6, name: "Ziggy", species: "Zebra", age: 6, diet: "Herbivore", habitat: "Savanna", health_status: "Good" },
+  { id: 7, name: "Koko", species: "Gorilla", age: 8, diet: "Herbivore", habitat: "Rainforest", health_status: "Excellent" },
+  { id: 8, name: "Sandy", species: "Snake", age: 2, diet: "Carnivore", habitat: "Desert", health_status: "Good" },
+  { id: 9, name: "Hopper", species: "Kangaroo", age: 4, diet: "Herbivore", habitat: "Grassland", health_status: "Healthy" },
+  { id: 10, name: "Polly", species: "Parrot", age: 15, diet: "Omnivore", habitat: "Rainforest", health_status: "Good" },
+];
 
 const typeDefs = gql`
   type Animal {
@@ -13,8 +24,6 @@ const typeDefs = gql`
     diet: String!
     habitat: String!
     health_status: String!
-    created_at: String!
-    updated_at: String!
   }
 
   input AnimalInput {
@@ -33,39 +42,30 @@ const typeDefs = gql`
 
   type Mutation {
     createAnimal(input: AnimalInput!): Animal!
-    updateAnimal(id: Int!, input: AnimalInput!): Animal!
     deleteAnimal(id: Int!): Boolean!
   }
 `;
 
 const resolvers = {
   Query: {
-    animals: async () => {
-      return db.select().from(animals);
-    },
-    animal: async (_: any, { id }: { id: number }) => {
-      const [animal] = await db.select().from(animals).where(eq(animals.id, id));
-      return animal;
+    animals: () => animals,
+    animal: (_: any, { id }: { id: number }) => {
+      return animals.find(animal => animal.id === id);
     },
   },
   Mutation: {
-    createAnimal: async (_: any, { input }: { input: NewAnimal }) => {
-      const [animal] = await db.insert(animals).values(input).returning();
-      return animal;
+    createAnimal: (_: any, { input }: { input: Omit<typeof animals[0], 'id'> }) => {
+      const newAnimal = {
+        id: animals.length + 1,
+        ...input,
+      };
+      animals.push(newAnimal);
+      return newAnimal;
     },
-    updateAnimal: async (
-      _: any,
-      { id, input }: { id: number; input: NewAnimal }
-    ) => {
-      const [animal] = await db
-        .update(animals)
-        .set(input)
-        .where(eq(animals.id, id))
-        .returning();
-      return animal;
-    },
-    deleteAnimal: async (_: any, { id }: { id: number }) => {
-      await db.delete(animals).where(eq(animals.id, id));
+    deleteAnimal: (_: any, { id }: { id: number }) => {
+      const index = animals.findIndex(animal => animal.id === id);
+      if (index === -1) return false;
+      animals.splice(index, 1);
       return true;
     },
   },

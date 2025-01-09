@@ -1,8 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,19 +22,6 @@ const formSchema = z.object({
   health_status: z.string().min(1, "Health status is required"),
 });
 
-const CREATE_ANIMAL = gql`
-  mutation CreateAnimal($input: AnimalInput!) {
-    createAnimal(input: $input) {
-      id
-      name
-      species
-      age
-      diet
-      habitat
-      health_status
-    }
-  }
-`;
 
 export default function AddAnimalForm({
   onComplete,
@@ -44,9 +29,6 @@ export default function AddAnimalForm({
   onComplete: () => void;
 }) {
   const { toast } = useToast();
-  const [createAnimal] = useMutation(CREATE_ANIMAL, {
-    refetchQueries: ["GetAnimals"],
-  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,9 +44,17 @@ export default function AddAnimalForm({
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await createAnimal({
-        variables: { input: values },
-      });
+      // Store the new animal in localStorage
+      const localAnimals = JSON.parse(localStorage.getItem('localAnimals') || '[]');
+      const newAnimal = {
+        ...values,
+        id: Date.now(), // Use timestamp as a unique ID for local animals
+        isLocal: true,
+      };
+
+      localAnimals.push(newAnimal);
+      localStorage.setItem('localAnimals', JSON.stringify(localAnimals));
+
       toast({
         title: "Success",
         description: "Animal added successfully",

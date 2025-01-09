@@ -12,7 +12,7 @@ const DELETE_ANIMAL = gql`
   }
 `;
 
-export default function AnimalCard({ animal }: { animal: any }) {
+export default function AnimalCard({ animal, onDelete }: { animal: any; onDelete?: () => void }) {
   const { toast } = useToast();
   const [deleteAnimal] = useMutation(DELETE_ANIMAL, {
     refetchQueries: ["GetAnimals"],
@@ -20,9 +20,19 @@ export default function AnimalCard({ animal }: { animal: any }) {
 
   const handleDelete = async () => {
     try {
-      await deleteAnimal({
-        variables: { id: animal.id },
-      });
+      // If the animal is from local storage
+      if (animal.isLocal) {
+        const storedAnimals = JSON.parse(localStorage.getItem('localAnimals') || '[]');
+        const updatedAnimals = storedAnimals.filter((a: any) => a.id !== animal.id);
+        localStorage.setItem('localAnimals', JSON.stringify(updatedAnimals));
+        onDelete?.();
+      } else {
+        // If the animal is from the server
+        await deleteAnimal({
+          variables: { id: animal.id },
+        });
+      }
+
       toast({
         title: "Animal deleted",
         description: `${animal.name} has been removed from the system.`,
