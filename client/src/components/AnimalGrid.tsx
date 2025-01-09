@@ -1,10 +1,9 @@
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
-import { useState, useEffect } from "react";
 import AnimalCard from "./AnimalCard";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const GET_ANIMALS = gql`
+const GET_ALL_ANIMALS = gql`
   query GetAnimals {
     animals {
       id
@@ -18,22 +17,29 @@ const GET_ANIMALS = gql`
   }
 `;
 
+const GET_ANIMAL_BY_ID = gql`
+  query GetAnimal($id: Int!) {
+    animal(id: $id) {
+      id
+      name
+      species
+      age
+      diet
+      habitat
+      health_status
+    }
+  }
+`;
+
 export default function AnimalGrid({ searchTerm }: { searchTerm: string }) {
-  const { loading, error, data } = useQuery(GET_ANIMALS);
-  const [localAnimals, setLocalAnimals] = useState<any[]>([]);
-  const [allAnimals, setAllAnimals] = useState<any[]>([]);
+  // Query for all animals or specific animal based on search term
+  const queryToUse = searchTerm ? GET_ANIMAL_BY_ID : GET_ALL_ANIMALS;
+  const variables = searchTerm ? { id: parseInt(searchTerm) } : undefined;
 
-  useEffect(() => {
-    // Load animals from localStorage
-    const storedAnimals = JSON.parse(localStorage.getItem('localAnimals') || '[]');
-    setLocalAnimals(storedAnimals);
-  }, []);
-
-  useEffect(() => {
-    // Combine server animals with local animals
-    const serverAnimals = data?.animals || [];
-    setAllAnimals([...serverAnimals, ...localAnimals]);
-  }, [data, localAnimals]);
+  const { loading, error, data } = useQuery(queryToUse, {
+    variables,
+    skip: searchTerm !== "" && isNaN(parseInt(searchTerm))
+  });
 
   if (loading) {
     return (
@@ -46,32 +52,32 @@ export default function AnimalGrid({ searchTerm }: { searchTerm: string }) {
   }
 
   if (error) {
-    return <div>Error loading animals</div>;
+    return (
+      <div className="text-center text-red-500">
+        {error.message.includes("404") 
+          ? "Animal not found" 
+          : "Error loading animals"}
+      </div>
+    );
   }
 
-  const filteredAnimals = allAnimals.filter(
-    (animal: any) =>
-      animal.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      animal.species.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleDelete = (animalId:string) => {
-    // Reload local animals after deletion
-    const storedAnimals = JSON.parse(localStorage.getItem('localAnimals') || '[]');
-    const updatedAnimals = storedAnimals.filter((animal:any) => animal.id !== animalId);
-    localStorage.setItem('localAnimals', JSON.stringify(updatedAnimals));
-    setLocalAnimals(updatedAnimals);
-  };
+  const animals = searchTerm && data?.animal 
+    ? [data.animal] 
+    : data?.animals || [];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {filteredAnimals.map((animal: any) => (
+      {animals.map((animal: any) => (
         <AnimalCard 
-          key={`${animal.id}`} 
-          animal={animal} 
-          onDelete={() => handleDelete(animal.id)}
+          key={animal.id} 
+          animal={animal}
         />
       ))}
+      {searchTerm && animals.length === 0 && (
+        <div className="col-span-full text-center text-gray-500">
+          No animal found with ID: {searchTerm}
+        </div>
+      )}
     </div>
   );
 }
