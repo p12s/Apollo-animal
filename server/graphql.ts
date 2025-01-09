@@ -1,26 +1,20 @@
-import { makeExecutableSchema } from '@graphql-tools/schema';
-import { animals, users } from '@db/schema';
-import { db } from '@db';
-import { eq } from 'drizzle-orm';
+import { ApolloServer } from "@apollo/server";
+import { gql } from "graphql-tag";
+import { db } from "@db";
+import { animals, type Animal, type NewAnimal } from "@db/schema";
+import { eq } from "drizzle-orm";
 
-const typeDefs = `#graphql
+const typeDefs = gql`
   type Animal {
-    id: ID!
+    id: Int!
     name: String!
     species: String!
     age: Int!
     diet: String!
-    health: String!
     habitat: String!
-    description: String
-    imageUrl: String
-    createdAt: String!
-    updatedAt: String!
-  }
-
-  type Query {
-    animals: [Animal!]!
-    animal(id: ID!): Animal
+    health_status: String!
+    created_at: String!
+    updated_at: String!
   }
 
   input AnimalInput {
@@ -28,50 +22,60 @@ const typeDefs = `#graphql
     species: String!
     age: Int!
     diet: String!
-    health: String!
     habitat: String!
-    description: String
-    imageUrl: String
+    health_status: String!
+  }
+
+  type Query {
+    animals: [Animal!]!
+    animal(id: Int!): Animal
   }
 
   type Mutation {
     createAnimal(input: AnimalInput!): Animal!
-    updateAnimal(id: ID!, input: AnimalInput!): Animal!
-    deleteAnimal(id: ID!): Boolean!
+    updateAnimal(id: Int!, input: AnimalInput!): Animal!
+    deleteAnimal(id: Int!): Boolean!
   }
 `;
 
 const resolvers = {
   Query: {
     animals: async () => {
-      return await db.select().from(animals);
+      return db.select().from(animals);
     },
-    animal: async (_, { id }) => {
-      const [animal] = await db.select().from(animals).where(eq(animals.id, parseInt(id))).limit(1);
+    animal: async (_: any, { id }: { id: number }) => {
+      const [animal] = await db.select().from(animals).where(eq(animals.id, id));
       return animal;
     },
   },
   Mutation: {
-    createAnimal: async (_, { input }) => {
+    createAnimal: async (_: any, { input }: { input: NewAnimal }) => {
       const [animal] = await db.insert(animals).values(input).returning();
       return animal;
     },
-    updateAnimal: async (_, { id, input }) => {
+    updateAnimal: async (
+      _: any,
+      { id, input }: { id: number; input: NewAnimal }
+    ) => {
       const [animal] = await db
         .update(animals)
-        .set({ ...input, updatedAt: new Date() })
-        .where(eq(animals.id, parseInt(id)))
+        .set(input)
+        .where(eq(animals.id, id))
         .returning();
       return animal;
     },
-    deleteAnimal: async (_, { id }) => {
-      await db.delete(animals).where(eq(animals.id, parseInt(id)));
+    deleteAnimal: async (_: any, { id }: { id: number }) => {
+      await db.delete(animals).where(eq(animals.id, id));
       return true;
     },
   },
 };
 
-export const schema = makeExecutableSchema({
+export const apolloServer = new ApolloServer({
   typeDefs,
   resolvers,
+  formatError: (error) => {
+    console.error('GraphQL Error:', error);
+    return error;
+  },
 });
